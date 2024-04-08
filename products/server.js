@@ -4,6 +4,7 @@ const { checkSchema } = require("express-validator");
 const cors = require("cors");
 const configureDB = require("./app/config/db");
 const roles = require("./utils/roles");
+const stripSecretKey = require("./app/controller/payment-ctrl");
 //const cron = require("node-cron");
 
 const app = express();
@@ -70,6 +71,8 @@ const productCtrl = require("./app/controller/product-ctrl");
 const grnCtrl = require("./app/controller/grn-Ctrl");
 const reserveCtrl = require("./app/controller/reserve-ctrl");
 const cartCtrl = require("./app/controller/cart-ctrl");
+const invoiceCtrl = require("./app/controller/invoice-ctrl");
+const paymentCtrl = require("./app/controller/payment-ctrl");
 
 const { authenticateUser, authorizeUser } = require("./app/middlewares/auth");
 
@@ -83,6 +86,7 @@ const productSchema = require("./app/validations/product-validation");
 const grnValidationSchema = require("./app/validations/grn-validation");
 const reserveValidation = require("./app/validations/reserve-validation");
 const cartValidationSchema = require("./app/validations/cart-validation");
+const paymentValidation = require("./app/validations/payment-validation");
 
 const port = 3055;
 configureDB();
@@ -194,16 +198,15 @@ app.delete(
 //Request Handler for Product
 app.get(
   "/api/products",
+  checkSchema(productSchema),
   authenticateUser,
   authorizeUser([roles.Techology, roles.contentTeam]),
-  checkSchema(productSchema),
   productCtrl.list
 );
 app.post(
   "/api/products",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.contentTeam]),
-  checkSchema(productSchema),
+  authorizeUser([roles.Techology, roles.contentTeam, roles.employee]),
   upload.single("images"),
   productCtrl.create
 );
@@ -234,7 +237,7 @@ app.delete(
 app.post(
   "/api/create/GRN",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.buying_and_Merchant]),
+  authorizeUser([roles.Techology, roles.buying_and_Merchant, roles.employee]),
   checkSchema(grnValidationSchema),
   grnCtrl.create
 );
@@ -245,37 +248,57 @@ app.post(
 app.post(
   "/api/create/product/reservation",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.contentTeam]),
+  authorizeUser([roles.Techology, roles.contentTeam, roles.employee]),
   checkSchema(reserveValidation),
   reserveCtrl.create
 );
 app.put(
   "/api/product/update/reserve/:id",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.contentTeam]),
-  checkSchema(reserveValidation),
+  authorizeUser([roles.Techology, roles.contentTeam, roles.employee]),
   reserveCtrl.update
 );
 app.delete(
   "/api/product/reserve/softDelete/:id",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.contentTeam]),
+  authorizeUser([roles.Techology, roles.contentTeam, roles.employee]),
   checkSchema(reserveValidation),
   reserveCtrl.softDelete
 ); //ReserveStop Api
 app.delete(
   "/api/product/resere/softDelete/ended/:id",
   authenticateUser,
-  authorizeUser([roles.Techology, roles.contentTeam]),
+  authorizeUser([roles.employee]),
   checkSchema(reserveValidation),
   reserveCtrl.ended
 ); //reserveEnded Api
 
 //cart Route
+app.post("/api/product/addToCart", cartCtrl.addToCart);
+
+//Invoice API's
+app.post("/api/order/invoice", invoiceCtrl.create);
+app.delete("/api/order/deleteInvoice/:InvoiceId", invoiceCtrl.softDelete);
+
+//payment Api's
 app.post(
-  "/api/product/cart",
-  checkSchema(cartValidationSchema),
-  cartCtrl.create
+  "/api/payment",
+  authenticateUser,
+  authorizeUser([roles.Retailers]),
+  checkSchema(paymentValidation),
+  paymentCtrl.create
+);
+app.post(
+  "/api/payment/update/:id",
+  authenticateUser,
+  authorizeUser([roles.Retailers]),
+  paymentCtrl.update
+);
+app.delete(
+  "/api/payment/:id",
+  authenticateUser,
+  authorizeUser([roles.Retailers]),
+  paymentCtrl.delete
 );
 
 //node-cron
@@ -295,6 +318,46 @@ setTimeout(() => {
 setTimeout(() => {
   task.stop;
 }, 8000);*/
+
+//cron
+/*const cron = require("node-cron");
+const Reserve = require("./app/models/reserve-model");
+const Product = require("./app/models/product-model");
+const { format } = require("date-fns");
+
+cron.schedule("1 * * * * *", async () => {
+  //console.log("seconds");
+  try {
+    const reservations = await Reserve.find({ status: "Started" });
+    console.log(reservations);
+    for (const reservation of reservations) {
+      if (
+        format(new Date(reservation.endDate), "dd/MM/yyyy") <
+        format(new Date(), "dd/MM/yyyy")
+      ) {
+        reservation.status = "Ended";
+        await reservation.save();
+      }
+
+      //Make reserveStock from product Object to Zero for reservations that ended
+      const endedReservations = await Reserve.find({ status: "Ended" });
+      for (const reservation of endedReservations) {
+        const productId = reservation.productId;
+        const product = await Product.findOneAndUpdate(
+          productId,
+          { reserveStock: 0 },
+          { new: true }
+        );
+        reservation.product = product;
+        await reservation.save();
+        console.log("Cron job executed successfully");
+      }
+    }
+  } catch (err) {
+    console.log("error occured during cron job", err);
+  }
+});
+*/
 
 app.listen(port, () => {
   console.log("products collection is running successfully on port" + port);

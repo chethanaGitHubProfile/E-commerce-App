@@ -4,8 +4,12 @@ const ProductSchema = {
   name: String,
   imagePath: String,
   mrp: Number,
-  tax: Number,
-  stock: Number,
+  stock: {
+    type: Number,
+    default: 0,
+  },
+  reserveStock: Number,
+  discount: Number,
   B2BPrice: Number,
   barcode: String,
   status: {

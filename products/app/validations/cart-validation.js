@@ -60,6 +60,27 @@ const cartValidation = {
   },
 };
 
+const cartUpdate = {
+  products: {
+    productId: {
+      isMongoId: {
+        errorMessage: "Should be avalid mongodb id",
+      },
+    },
+    quantity: {
+      custom: {
+        options: (value) => {
+          if (value <= 0) {
+            throw new Error("Quantity must be greater than zero");
+          }
+          return true;
+        },
+      },
+    },
+  },
+};
+
 module.exports = {
   cartValidation: cartValidation,
+  cartUpdate: cartUpdate,
 };

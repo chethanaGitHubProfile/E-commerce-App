@@ -1,5 +1,6 @@
 const { validationResult } = require("express-validator");
 const Product = require("../models/product-model");
+const { discount } = require("../validations/product-validation");
 const productCtrl = {};
 
 //list
@@ -34,10 +35,10 @@ productCtrl.create = async (req, res) => {
   const mrp = body.mrp;
 
   //extracts tax from request object
-  const tax = body.tax;
+  const discount = body.discount;
 
   //it calculates B2Bprice
-  const B2BPrice = Math.abs(Math.round((tax / 100) * mrp - mrp));
+  const B2BPrice = Math.abs(Math.round((discount / 100) * mrp - mrp));
 
   //it assigns calculated B2Bprice to property in request body
   body.B2BPrice = B2BPrice;
@@ -67,8 +68,8 @@ productCtrl.update = async (req, res) => {
     return res.status(401).json({ errros: "no file upoloaded" });
   }
   const mrp = body.mrp;
-  const tax = body.tax;
-  const B2BPrice = Math.abs(Math.round((tax / 100) * mrp - mrp));
+  const discount = body.discount;
+  const B2BPrice = Math.abs((discount / 100) * mrp - mrp);
   body.B2BPrice = B2BPrice;
   try {
     const imagePath = req.file.filename;

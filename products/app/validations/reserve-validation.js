@@ -15,37 +15,47 @@ const reserveValidation = {
         }
       },
     },
-    reserveQuantity: {
-      type: Number,
-      required: true,
-      default: 0,
-      validate: {
-        validator: Number.isInteger,
-        message: "Quantity must be in Integer",
+  },
+  reserveQuantity: {
+    notEmpty: {
+      errorMessage: "quantity is required",
+    },
+    custom: {
+      options: async function (value, { req }) {
+        if (!Number.isInteger(Number(value))) {
+          throw new Error("quantity should be number");
+        }
+        return true;
       },
     },
-    startDate: {
-      type: Date,
-      required: true,
-      validate: {
-        validator: function (date) {
-          return date instanceof Date && !isNaN(date); //isNaN() returns true for values that are not numeric,
-          // !isNaN() returns true for values that are numeric.
-        },
-        message: "Invalid start date",
+  },
+  startDate: {
+    notEmpty: {
+      errorMessage: "Startdate is required",
+    },
+    custom: {
+      options: async function (value) {
+        return value instanceof Date && !isNaN(value); //isNaN() returns true for values that are not numeric,
+        // !isNaN() returns true for values that are numeric.
       },
-      endDate: {
-        type: Date,
-        required: true,
-        custom: {
-          options: async function (value, { req }) {
-            if (value > req.body.startDate) {
-              throw new Error("endDate must be greater than startDate");
-            }
-          },
-        },
+      errorMessage: "Invalid start date",
+    },
+  },
+  endDate: {
+    notEmpty: {
+      errorMessage: "endDate is required",
+    },
+    custom: {
+      options: async function (value, { req }) {
+        const startDate = new Date(req.body.startDate);
+        const endDate = new Date(value);
+        if (endDate < startDate) {
+          throw new Error("endDate must be greater than startDate");
+        }
+        return true;
       },
     },
   },
 };
+
 module.exports = reserveValidation;
